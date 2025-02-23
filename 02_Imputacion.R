@@ -19,15 +19,14 @@ myPath <- '/Users/valentinacardona/Documents/Code Nerd/GitHub/imputacion-likert'
 setwd(myPath)
 
 # Directorio temporal
-inPath <- "./data"
+dataPath <- "./data"
 
 #==================================#
 #### 2. Instalación de paquetes ####
 #==================================#
 
 # Lista de paquetes que se necesitan
-paquetes <- c("haven", "readstata13", "Hmisc","Rrepest", "readxl",
-              "tidyverse","magrittr","dplyr","tidyr","data.table")
+paquetes <- c("openxlsx", "tidyverse","magrittr","dplyr","tidyr","data.table")
 # Utilizar lapply para cargar cada paquete si aún no está instalado
 paquetes_cargar <- lapply(paquetes, 
                           FUN = function(x){
@@ -39,7 +38,29 @@ paquetes_cargar <- lapply(paquetes,
 )
 #update.packages(ask = FALSE)
 
+rm(paquetes, paquetes_cargar)
+
 #======================#
-#### 4. Importación ####
+#### 3. Importación ####
 #======================#
-list.files(inPath)
+list.files(dataPath)
+
+# Cargar datos de remuestreo
+load("./data/01_Remuestreo.RData")
+
+#======================================#
+#### 4. Regresión Logística Ordinal ####
+#======================================#
+
+
+
+
+
+
+
+
+
+
+
+
+
