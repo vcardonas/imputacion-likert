@@ -50,13 +50,26 @@ load("./data/01_Remuestreo.RData")
 
 # Lista de bases
 bases <- expand.grid(prefix = factor(paste0("SSES_", c("MCAR_", "MAR_", "NMAR_"))),
-                     suffix = c("10", "25", "50")) |> apply(1, paste0, collapse = "")
+                     suffix = c("30", "50", "70")) |> apply(1, paste0, collapse = "")
 
-# Ítems como variable ordenada
+# Convertir formatos de ítems
+SSES_Train[unname(unlist(itemsHSE15))] <- lapply(SSES_Train[unname(unlist(itemsHSE15))], as.factor)
+SSES_Train[unname(unlist(itemImput))] <- lapply(SSES_Train[unname(unlist(itemImput))], function(x) ordered(x, levels = c(1, 2, 3, 4, 5)))
+
+SSES_Test[unname(unlist(itemsHSE15))] <- lapply(SSES_Test[unname(unlist(itemsHSE15))], as.factor)
+SSES_Test[unname(unlist(itemImput))] <- lapply(SSES_Test[unname(unlist(itemImput))], function(x) ordered(x, levels = c(1, 2, 3, 4, 5)))
+
+# 
 for (base in bases) {
   temp_df <- get(base)  # Obtener el data frame a partir de su nombre como string
-  temp_df[colnames(temp_df) != "FullID"] <- lapply(temp_df[colnames(temp_df) != "FullID"], 
-                                                   function(x) ordered(x, levels = c(1, 2, 3, 4, 5)))
+  
+  # Convertir variables a factores
+  temp_df[colnames(temp_df) != "FullID"] <- lapply(temp_df[colnames(temp_df) != "FullID"], as.factor)
+  
+  # Convertir ítems a imputar a categorías ordenadas
+  temp_df[unname(unlist(itemImput))] <- lapply(temp_df[unname(unlist(itemImput))],
+                                               function(x) ordered(x, levels = c(1, 2, 3, 4, 5)))
+  
   assign(base, temp_df, envir = .GlobalEnv)  # Guardar los cambios en el entorno global
 }
 
@@ -65,9 +78,9 @@ rm(base, temp_df)
 #======================================#
 #### 4. Regresión Logística Ordinal ####
 #======================================#
-# Proportional Odds Model
+
 x = "Asertividad"
-base = "SSES_MAR_10"
+base = "SSES_MAR_30"
 
 lapply(bases, function(base){
   # datos
@@ -78,27 +91,18 @@ lapply(bases, function(base){
     y <- itemImput[[x]]
     # Items de la misma dimensión
     X <- itemsHSE15[[x]][itemsHSE15[[x]] != y]
-    # Modelo
+    # Estructura del modelo
     POModel <- paste0(y, "~", paste(X, collapse = "+"))
-    # correr proportional odds model
-    fit <- polr(formula = POModel, data = datos)
     
-    # Coeficientes
-    coefficients <- summary(fit)$coefficients
+    # Proportional Odds Logistic Regression
+    fit <- polr(formula = POModel, method = "logistic", data = SSES_Train)
     
-    # calcular p-values
-    p_value <- (1 - pnorm(abs(coefficients[ ,"t value"]), 0, 1))*2
-    coefficients <- cbind(coefficients, p_value)
-    
-    # calcular odds ratios
-    odds_ratio <- exp(coefficients[ ,"Value"])
-    coefficients <- cbind(coefficients, odds_ratio)
-    
-    return(coefficients)
+    # Predecir datos faltantes
+    predict(fit, newdata = datos, type = "class")
   })
-  names(HSE) <- names(itemsHSE15)
-  
+  names(HSE) <- unname(unlist(itemImput))
+  HSE <- as.data.frame(HSE)
 })
 
-#predict(model_polr, newdata = dummy_test, type = "class")
+predict(fit, newdata = datos[is.na(datos$STA_ASS05),], type = "class")
 
