@@ -174,11 +174,11 @@ CS <- MC %>%
   mutate(`0` = sum(`R1-P1`, `R2-P2`, `R3-P3`, `R4-P4`, `R5-P5`),
          `1` = sum(`0`, 
                    `R1-P2`,`R2-P1`,`R2-P3`,`R3-P2`,`R3-P4`,`R4-P3`,`R4-P5`,`R5-P4`),
-         `2` = sum(`0`, `1`, 
+         `2` = sum(`1`, 
                    `R1-P3`,`R2-P4`,`R3-P1`,`R3-P5`,`R4-P2`,`R5-P3`),
-         `3` = sum(`0`, `1`, `2`,
+         `3` = sum(`2`,
                    `R1-P4`,`R2-P5`,`R4-P1`,`R5-P2`),
-         `4` = sum(`0`, `1`, `2`, `3`,
+         `4` = sum(`3`,
                    `R1-P5`,`R5-P1`),
          across(`0`:`4`, ~.x/`4`*100)) %>% 
   dplyr::select(-starts_with("R")) %>% 
@@ -188,16 +188,6 @@ CS <- MC %>%
                            Distancia == 2 ~ 50,
                            Distancia == 3 ~ 75,
                            Distancia == 4 ~ 100))
-
-# Área entre Curvas
-#ABC
-CS %>%
-  mutate(Distancia = as.numeric(Distancia),
-         `CS(%)` = as.numeric(`CS(%)`),
-         ref = as.numeric(ref)) %>%
-  arrange(Modelo, Tipo, Porcentaje, Distancia) %>% 
-  group_by(Modelo, Tipo, Porcentaje) %>%
-  summarise(ABC = trapz(Distancia, `CS(%)` - ref), .groups = "drop")
 
 #### 5.4 Exportar ####
 
@@ -298,7 +288,6 @@ metricas %>%
   geom_point(aes(x = Inf, y = Inf, shape = "MAE"), size = 3, colour = "black")  # Punto invisible para forzar la leyenda
 ggsave("./output/metricas_NMAR.png", width = 10, height = 6, dpi = 600)
 dev.off()
-
 
 #### 6.1 Curva Sumas Acumuladas ####
 
