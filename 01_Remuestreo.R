@@ -48,19 +48,8 @@ list.files(dataPath)
 ##### 3.1 Base principal ####
 # SSES 2019 - Public Use File
 SSES_ST_PUF2019 <- read.dta13(file.path(dataPath, "INT_01_ST_(2021.04.14)_Public.dta"), generate.factors = TRUE)
-SSES_ST_PUF2019 %<>% dplyr::mutate(across(where(is.character), ~ na_if(., "")),
-                                   StdID = as.numeric(StdID))
+SSES_ST_PUF2019 %<>% dplyr::mutate(across(where(is.character), ~ na_if(., "")))
 glimpse(SSES_ST_PUF2019)
-
-#### 3.2 Trend Scales ####
-# SSES 2023 - Escalas de Tendencia
-SSES_TScales <- read_sav(file.path(dataPath, "SSES R2 TREND PUF INTERNATIONAL.sav"))
-# Extraer "Sitio" de ronda 1 (2019) dado que SSES2019 no tiene esta variable
-SSES_TScales %<>% 
-  dplyr::mutate(across(where(is.character), ~ trimws(.))) %>% 
-  filter(Round == 1) %>%  
-  dplyr::select(SiteID, Site) %>% 
-  distinct()
 
 ##### 3.3 HSE ####
 # 15 Habilidades Sociales y Emocionales
@@ -93,14 +82,12 @@ itemsInversos <- c("STA_ASS05", "STA_COO04", "STA_CRE03", "STA_CRE07", "STA_CRE0
 ##### 4.1 Base inicial ####
 # Solo ítems a analizar
 SSES_Inicial <- SSES_ST_PUF2019 %>% 
-  dplyr::select(FullID, SiteID,
+  dplyr::select(Username_Std, SiteID,
          all_of(unname(unlist(itemsHSE15))),
          all_of(as.vector(varsHSE15)),
          st_anxtest) %>% 
   mutate(across(unname(unlist(itemsHSE15)), ~ifelse(.x %in% c(7,9), NA, .x)),
-         across(unname(unlist(itemsInversos)), ~ 6 - .x),
-         Site = SSES_TScales$Site[match(SiteID, SSES_TScales$SiteID)]) %>% 
-  dplyr::select(-SiteID) %>% relocate(Site, .after = FullID)
+         across(unname(unlist(itemsInversos)), ~ 6 - .x))
 dim(SSES_Inicial) # 60985
 colSums(is.na(SSES_Inicial))
 
@@ -113,7 +100,7 @@ datosNA <- SSES_Inicial %>%
   arrange(desc(missing_count))
 ## Por sitio
 datosNA %>% 
-  group_by(Site) %>% 
+  group_by(SiteID) %>% 
   summarise(num_NA = sum(missing_count))
 ## Por dimensión
 datosNA %>% 
@@ -129,8 +116,7 @@ datosNA %>%
   arrange(desc(num_NA))
 
 # Eliminar datos faltantes
-SSES_Inicial %<>% 
-  na.omit()
+SSES_Inicial %<>% na.omit()
 dim(SSES_Inicial) # 54050
 
 # Verificar
@@ -189,24 +175,18 @@ set.seed(2025)
 SSES_MCAR_30 <- SSES_Test %>%
   mutate(across(unname(unlist(itemImput)), 
                 ~ ifelse(runif(n()) < 0.3, NA, .))) %>% 
-  dplyr::select(FullID, all_of(unname(unlist(itemsHSE15))))
+  dplyr::select(Username_Std, all_of(unname(unlist(itemsHSE15))))
 colMeans(is.na(SSES_MCAR_30[unname(unlist(itemImput))]))
+mean(colMeans(is.na(SSES_MCAR_30[unname(unlist(itemImput))])))*100
 
 # 50% de valores perdidos al azar
 set.seed(2025)
 SSES_MCAR_50 <- SSES_Test %>%
   mutate(across(unname(unlist(itemImput)), 
                 ~ ifelse(runif(n()) < 0.5, NA, .))) %>% 
-  dplyr::select(FullID, all_of(unname(unlist(itemsHSE15))))
+  dplyr::select(Username_Std, all_of(unname(unlist(itemsHSE15))))
 colMeans(is.na(SSES_MCAR_50[unname(unlist(itemImput))]))
-
-# 70% de valores perdidos al azar
-set.seed(2025)
-SSES_MCAR_70 <- SSES_Test %>%
-  mutate(across(unname(unlist(itemImput)), 
-                ~ ifelse(runif(n()) < 0.7, NA, .))) %>% 
-  dplyr::select(FullID, all_of(unname(unlist(itemsHSE15))))
-colMeans(is.na(SSES_MCAR_70[unname(unlist(itemImput))]))
+mean(colMeans(is.na(SSES_MCAR_50[unname(unlist(itemImput))])))*100
 
 #### 6.2 Al azar (MAR) ####
 # La probabilidad de datos faltantes depende de otras variables observadas.
@@ -224,8 +204,9 @@ SSES_MAR_30 <- SSES_Test %>%
     across(all_of(unname(unlist(itemImput))),  
            ~ ifelse(get(paste0("eliminar_", sub(".*_([A-Z]{3}).*", "\\1", cur_column()), "_WLE_ADJ")), NA, .x))  # Aplicar NA
   ) %>%
-  dplyr::select(FullID, all_of(unname(unlist(itemsHSE15))))
+  dplyr::select(Username_Std, all_of(unname(unlist(itemsHSE15))))
 colMeans(is.na(SSES_MAR_30[unname(unlist(itemImput))]))
+mean(colMeans(is.na(SSES_MAR_30[unname(unlist(itemImput))])))*100
 
 # 50% de valores perdidos al azar
 set.seed(2025)
@@ -240,24 +221,9 @@ SSES_MAR_50 <- SSES_Test %>%
     across(all_of(unname(unlist(itemImput))),  
            ~ ifelse(get(paste0("eliminar_", sub(".*_([A-Z]{3}).*", "\\1", cur_column()), "_WLE_ADJ")), NA, .x))  # Aplicar NA
   ) %>%
-  dplyr::select(FullID, all_of(unname(unlist(itemsHSE15))))
+  dplyr::select(Username_Std, all_of(unname(unlist(itemsHSE15))))
 colMeans(is.na(SSES_MAR_50[unname(unlist(itemImput))]))
-
-# 70% de valores perdidos al azar
-set.seed(2025)
-SSES_MAR_70 <- SSES_Test %>%
-  mutate(
-    across(all_of(as.vector(varsHSE15)), 
-           ~ 0.7 * (1 - rescale(.x, to = c(0, 1))), # Probabilidad de NA entre 0 y 70% (inversamente proporcional al puntaje)
-           .names = "prob_NA_{.col}"),
-    across(all_of(as.vector(varsHSE15)), 
-           ~ runif(n()) < get(paste0("prob_NA_", cur_column())), # Remuestrear NA con esa probabilidad
-           .names = "eliminar_{.col}"),
-    across(all_of(unname(unlist(itemImput))),  
-           ~ ifelse(get(paste0("eliminar_", sub(".*_([A-Z]{3}).*", "\\1", cur_column()), "_WLE_ADJ")), NA, .x))  # Aplicar NA
-  ) %>%
-  dplyr::select(FullID, all_of(unname(unlist(itemsHSE15))))
-colMeans(is.na(SSES_MAR_70[unname(unlist(itemImput))]))
+mean(colMeans(is.na(SSES_MAR_50[unname(unlist(itemImput))])))*100
 
 #### 6.3 No al azar (NMAR) ####
 # La probabilidad de datos faltantes depende del mismo valor de la variable.
@@ -267,24 +233,18 @@ set.seed(2025)
 SSES_NMAR_30 <- SSES_Test %>%
   mutate(across(unname(unlist(itemImput)), 
                 ~ ifelse(. %in% c(1, 2) & runif(n()) < 0.3, NA, .))) %>% 
-  dplyr::select(FullID, all_of(unname(unlist(itemsHSE15))))
+  dplyr::select(Username_Std, all_of(unname(unlist(itemsHSE15))))
 colMeans(is.na(SSES_NMAR_30[unname(unlist(itemImput))]))
+mean(colMeans(is.na(SSES_NMAR_30[unname(unlist(itemImput))])))*100
 
 # 50% de valores perdidos al azar
 set.seed(2025)
 SSES_NMAR_50 <- SSES_Test %>%
   mutate(across(unname(unlist(itemImput)), 
                 ~ ifelse(. %in% c(1, 2) & runif(n()) < 0.5, NA, .))) %>% 
-  dplyr::select(FullID, all_of(unname(unlist(itemsHSE15))))
+  dplyr::select(Username_Std, all_of(unname(unlist(itemsHSE15))))
 colMeans(is.na(SSES_NMAR_50[unname(unlist(itemImput))]))
-
-# 70% de valores perdidos al azar
-set.seed(2025)
-SSES_NMAR_70 <- SSES_Test %>%
-  mutate(across(unname(unlist(itemImput)), 
-                ~ ifelse(. %in% c(1, 2) & runif(n()) < 0.7, NA, .))) %>% 
-  dplyr::select(FullID, all_of(unname(unlist(itemsHSE15))))
-colMeans(is.na(SSES_NMAR_70[unname(unlist(itemImput))]))
+mean(colMeans(is.na(SSES_NMAR_50[unname(unlist(itemImput))])))*100
 
 #======================#
 #### 7. Exportación ####
@@ -301,28 +261,22 @@ addWorksheet(wb, "MCAR_30")
 writeData(wb, sheet = "MCAR_30", SSES_MCAR_30)
 addWorksheet(wb, "MCAR_50")
 writeData(wb, sheet = "MCAR_50", SSES_MCAR_50)
-addWorksheet(wb, "MCAR_70")
-writeData(wb, sheet = "MCAR_70", SSES_MCAR_70)
 
 addWorksheet(wb, "MAR_30")
 writeData(wb, sheet = "MAR_30", SSES_MAR_30)
 addWorksheet(wb, "MAR_50")
 writeData(wb, sheet = "MAR_50", SSES_MAR_50)
-addWorksheet(wb, "MAR_70")
-writeData(wb, sheet = "MAR_70", SSES_MAR_70)
 
 addWorksheet(wb, "NMAR_30")
 writeData(wb, sheet = "NMAR_30", SSES_NMAR_30)
 addWorksheet(wb, "NMAR_50")
 writeData(wb, sheet = "NMAR_50", SSES_NMAR_50)
-addWorksheet(wb, "NMAR_70")
-writeData(wb, sheet = "NMAR_70", SSES_NMAR_70)
 
 saveWorkbook(wb, file.path(dataPath, "Datos_Remuestreo.xlsx"), overwrite = TRUE)
 
 # Información relevante
 
-rm(list = c("dataPath", "datosNA", "itemsInversos", "myPath", "SSES_Inicial", "SSES_ST_PUF2019", "SSES_TScales",
+rm(list = c("dataPath", "datosNA", "itemsInversos", "myPath", "SSES_Inicial", "SSES_ST_PUF2019",
             "varsHSE15", "wb", "test", "train", "train1"))
 
 save.image(file = "./data/01_Remuestreo.RData")
