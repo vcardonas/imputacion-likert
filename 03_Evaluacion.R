@@ -289,7 +289,7 @@ metricas %>%
 ggsave("./output/metricas_NMAR.png", width = 10, height = 6, dpi = 600)
 dev.off()
 
-#### 6.1 Curva Sumas Acumuladas ####
+#### 6.2 Curva Sumas Acumuladas ####
 
 # 30%
 CS %>% 
@@ -334,4 +334,69 @@ CS %>%
         panel.grid.major = element_line(color = "gray85", linetype = "dashed"),
         panel.border = element_rect(fill = "transparent", color = "black", linewidth = 1)) 
 ggsave("./output/CS_50.png", width = 8, height = 4, dpi = 600)
+dev.off()
+
+
+#### 6.3 Distribuciones ####
+
+load("./data/01_Remuestreo.RData")
+
+# Datos de entrenamiento
+SSES_Train[unname(unlist(itemImput))] %>% 
+  pivot_longer(everything()) %>% table() %>% as.data.frame() %>% 
+  mutate(HSE = sapply(name, function(x) {
+    nombre <- names(itemImput)[sapply(itemImput, function(y) x %in% y)]
+    if (length(nombre) == 0) "Desconocido" else nombre}),
+    value = factor(value, levels = c(1,2,3,4,5))) %>%
+  group_by(HSE) %>% 
+  mutate(Percentage = Freq / sum(Freq) * 100) %>%  
+  ungroup() %>% 
+  ggplot(aes(x = HSE, y = Percentage, fill = value)) +
+  geom_col(position = position_stack(reverse = TRUE)) +
+  geom_text(aes(label = sprintf("%.1f%%", Percentage)),  
+            position = position_stack(vjust = 0.5, reverse = TRUE),  
+            size = 3, color = "black", fontface = "bold") + 
+  scale_fill_manual(values = c("#BCF9FF", "#FFCA99", "#B2B2FF", "#A1D99B", "#E5E5E5")) +
+  theme_minimal(base_size = 13) +
+  labs(title = "Datos de Entrenamiento: Distribución de Respuestas en la Escala Likert",,
+       fill = "Escala Likert", y = NULL) +
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(),
+        panel.grid = element_blank(),
+        panel.border = element_rect(fill = "transparent", color = "black", linewidth = 1),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.text = element_text(size = 15, face = "bold"),
+        plot.title = element_text(size = 11, face = "bold", hjust = 0.5, color = "black")) +
+  scale_y_continuous(labels = function(x) sprintf("%.0f%%", x))
+ggsave("./output/Distri_Train.png", width = 6, height = 6, dpi = 600)
+dev.off()
+
+# Datos de prueba
+SSES_Test[unname(unlist(itemImput))] %>% 
+  pivot_longer(everything()) %>% table() %>% as.data.frame() %>% 
+  mutate(HSE = sapply(name, function(x) {
+    nombre <- names(itemImput)[sapply(itemImput, function(y) x %in% y)]
+    if (length(nombre) == 0) "Desconocido" else nombre}),
+    value = factor(value, levels = c(1,2,3,4,5))) %>%
+  group_by(HSE) %>% 
+  mutate(Percentage = Freq / sum(Freq) * 100) %>%  
+  ungroup() %>% 
+  ggplot(aes(x = HSE, y = Percentage, fill = value)) +
+  geom_col(position = position_stack(reverse = TRUE)) +
+  geom_text(aes(label = sprintf("%.1f%%", Percentage)),  
+            position = position_stack(vjust = 0.5, reverse = TRUE),  
+            size = 3, color = "black", fontface = "bold") + 
+  scale_fill_manual(values = c("#BCF9FF", "#FFCA99", "#B2B2FF", "#A1D99B", "#E5E5E5")) +
+  theme_minimal(base_size = 13) +
+  labs(title = "Datos de Prueba: Distribución de Respuestas en la Escala Likert",,
+       fill = "Escala Likert", y = NULL) +
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(),
+        panel.grid = element_blank(),
+        panel.border = element_rect(fill = "transparent", color = "black", linewidth = 1),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.text = element_text(size = 15, face = "bold"),
+        plot.title = element_text(size = 11, face = "bold", hjust = 0.5, color = "black")) +
+  scale_y_continuous(labels = function(x) sprintf("%.0f%%", x))
+ggsave("./output/Distri_Test.png", width = 6, height = 6, dpi = 600)
 dev.off()
